@@ -83,16 +83,16 @@ def train():
 	
     ########################### CREATE MODEL #################################
 
-    revw_model=model.IDM.Co_attention(768,opt.emb_size,opt.revw_dropout,False)
-    revw_model.cuda()
-    revw_optimizer=optim.Adam(revw_model.parameters(),lr=opt.lr)
+    IDM=model.IDM.Co_attention(768,opt.emb_size,opt.revw_dropout,False)
+    IDM.cuda()
+    revw_optimizer=optim.Adam(IDM.parameters(),lr=opt.lr)
 
     DTE = model.DTE.Model(opt.seq_len, opt.emb_size,opt.d_feature, d_model=opt.d_model, d_inner_hid=opt.d_inner_hid, n_head=opt.n_head, d_k=opt.d_k, d_v=opt.d_v, num_experts = opt.num_experts, layers=opt.num_layers, dropout=opt.drr_dropout)
     DTE.cuda()
     drr_optimizer = optim.Adam(DTE.parameters(), lr=opt.lr)
 
 
-    print(revw_model)
+    print(IDM)
     print(DTE)
     print('model created finish,training time begins...')
     running_time_start= time.time()
@@ -100,7 +100,7 @@ def train():
     ########################### TRAINING #####################################
     best_p5 = 0
     for epoch in range(opt.train_epochs):
-        revw_model.train()
+        IDM.train()
         DTE.train()
         start_time = time.time()
         count=0
@@ -115,10 +115,10 @@ def train():
             text_users=text_users.cuda()
             text_items=text_items.cuda()
 
-            revw_model.zero_grad()
+            IDM.zero_grad()
             DTE.zero_grad()
 
-            revw_user_features,revw_item_features,_,_=revw_model(text_users,text_items)
+            revw_user_features,revw_item_features,_,_=IDM(text_users,text_items)
             predictions=DTE(user_embeddings,item_embeddings,
                                   revw_user_features,revw_item_features,pvs,pos,pos_mode=1)
 
@@ -137,7 +137,7 @@ def train():
         print("LOSS: {:.3f}".format(loss_sum / count))
 
         ########### EVALUATION ON VALIDATION SET ###########
-        revw_model.eval()
+        IDM.eval()
         DTE.eval()
 
         initial_labels_list = []
@@ -153,7 +153,7 @@ def train():
                 text_users = text_users.cuda()
                 text_items = text_items.cuda()
 
-                revw_user_features, revw_item_features, _, _ = revw_model(text_users, text_items)
+                revw_user_features, revw_item_features, _, _ = IDM(text_users, text_items)
                 predictions = DTE(user_embeddings, item_embeddings,
                                     revw_user_features, revw_item_features, pvs, pos, pos_mode=1)
 
@@ -169,7 +169,7 @@ def train():
             best_epoch = epoch
             if not os.path.exists('./models/{}'.format(opt.dataset)):
                 os.mkdir('./models/{}'.format(opt.dataset))
-            torch.save(revw_model, './models/{}/revw_model.pth'.format(opt.dataset))
+            torch.save(IDM, './models/{}/IDM.pth'.format(opt.dataset))
             torch.save(DTE, './models/{}/DTE.pth'.format(opt.dataset))
         print("End. Best epoch {:03d}: p@5 = {:.3f}".format(
             best_epoch, best_p5))
@@ -196,9 +196,9 @@ def test():
 
     ########################### CREATE MODEL #################################
 
-    revw_model = model.IDM.Co_attention(768, opt.emb_size, opt.revw_dropout,
+    IDM = model.IDM.Co_attention(768, opt.emb_size, opt.revw_dropout,
                                                  False)
-    revw_model.cuda()
+    IDM.cuda()
 
     DTE = model.DTE.Model(opt.seq_len, opt.emb_size, opt.d_feature, d_model=opt.d_model,
                                          d_inner_hid=opt.d_inner_hid, n_head=opt.n_head, d_k=opt.d_k, d_v=opt.d_v,
@@ -206,10 +206,10 @@ def test():
     DTE.cuda()
 
 
-    revw_model = torch.load('./models/{}/revw_model.pth'.format(opt.dataset))
+    IDM = torch.load('./models/{}/IDM.pth'.format(opt.dataset))
     DTE = torch.load('./models/{}/DTE.pth'.format(opt.dataset))
 
-    revw_model.eval()
+    IDM.eval()
     DTE.eval()
     initial_labels_list = []
     labels_list = []
@@ -224,7 +224,7 @@ def test():
         text_users = text_users.cuda()
         text_items = text_items.cuda()
 
-        revw_user_features, revw_item_features, _, _ = revw_model(text_users, text_items)
+        revw_user_features, revw_item_features, _, _ = IDM(text_users, text_items)
         predictions = DTE(user_embeddings, item_embeddings,
                                 revw_user_features, revw_item_features, pvs, pos, pos_mode=1)
 
